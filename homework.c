@@ -14,7 +14,7 @@
 #include "uprog.h"
 
 /***********************************/
-/* Declarations for code in misc.c */
+/* DECLARATIONS FOR code in misc.c */
 /***********************************/
 
 typedef int *stack_ptr_t;
@@ -31,6 +31,7 @@ extern void  *proc2_stack;
 extern void **vector;
 
 int readfile(char *file, char *buf, int buflen);
+char *strword(char *s, char *buf, size_t len);
 
 /***********************************************/
 /********* Your code starts here ***************/
@@ -91,6 +92,18 @@ int readfile(char *file, char *buf, int buflen)
     return i;
 }
 
+char *strword(char *s, char buf[], size_t len)
+{
+  s += strspn(s, " ");
+  int n = strcspn(s, " ");
+  if(len-1 < n)
+    n = len-1;
+  memcpy(buf, s, n);
+  buf[n] = 0;
+  s += n;
+  return (*s == 0) ? NULL : s;
+}
+
 /*
  * Question 2.
  *
@@ -123,7 +136,7 @@ void readline(char *buf, int len) /* vector index = 1 */
   int i = 0;
   char c;
   FILE *fp = stdin;
-  while(c = getc(fp) != '\n' || i < len) {
+  while((c = getc(fp)) != 13 && c != 10 && i < len) {
     buf[i++] = c;
   }
   buf[i] = '\0';
@@ -134,6 +147,7 @@ char *getarg(int i)		/* vector index = 2 */
     /*
      * Your code here. 
      */
+
     return NULL;
 }
 
@@ -144,10 +158,17 @@ char *getarg(int i)		/* vector index = 2 */
 void q2(void)
 {
     /* Your code goes here */
+  char buf[128];
+  void *temp_vector = NULL;
+	char words[10][20];
+	char *line = malloc(20*sizeof(char));
 
-  *vector + 1 = readline;
-  *vector + 2 = getarg;
-
+  //temp_vector = *(vector + 1);
+	*(vector+1) = readline;
+	//temp_vector = readline;
+  temp_vector = *(vector + 2);
+  temp_vector = getarg;
+ 
     while (1) {
 	/* get a line */
 	/* split it into words */
@@ -155,6 +176,22 @@ void q2(void)
 	/* if first word is "quit", break */
 	/* make sure 'getarg' can find the remaining words */
 	/* load and run the command */
+      readline(buf, sizeof(buf));
+      //readfile("q1prog", (char*) proc1, 106);
+		int i;
+		for (i = 0; i < 10; i++) {
+			line = strword(buf, words[i], sizeof(words[i]));
+			if (buf == NULL)
+				break;
+		}
+		
+		if (strcmp(words[0], "quit"))
+			break;
+		readfile(words[0], (char*) proc1, 3000);
+    //print((char*)proc1);
+    int (*a)(void) = NULL;
+    a = proc1;
+    a();
     }
     /*
      * Note that you should allow the user to load an arbitrary command,
