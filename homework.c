@@ -28,14 +28,33 @@ extern void  *proc1;
 extern void  *proc1_stack;
 extern void  *proc2;
 extern void  *proc2_stack;
+void *main_stack = NULL;
 extern void **vector;
 
 int readfile(char *file, char *buf, int buflen);
-char *strword(char *s, char *buf, size_t len);
+char *strword(char *s, char *buf);
 
 /***********************************************/
 /********* Your code starts here ***************/
 /***********************************************/
+
+/*
+ * Intialize vector table
+ * This function initializes all the methods that OS provides
+ * through a vector table which is stored at constant memory
+ * location.
+ */
+void init_vector(void)
+{
+  *(vector+0) = print;
+  *(vector+1) = readline;
+  *(vector+2) = getarg;
+  *(vector+3) = yield12;
+  *(vector+4) = yield21;
+  *(vector+5) = uexit;
+}
+
+/*********************************************/
 
 /*
  * Question 1.
@@ -66,7 +85,7 @@ void q1(void)
      * code, and go.
      */
     readfile("q1prog", (char*) proc1, 106);
-    *vector = print;
+    init_vector();
     //print((char*)proc1);
     int (*a)(void) = NULL;
     a = proc1;
@@ -92,16 +111,18 @@ int readfile(char *file, char *buf, int buflen)
     return i;
 }
 
-char *strword(char *s, char buf[], size_t len)
+char *strword(char *s, char buf[])
 {
-  s += strspn(s, " ");
-  int n = strcspn(s, " ");
-  if(len-1 < n)
-    n = len-1;
-  memcpy(buf, s, n);
-  buf[n] = 0;
-  s += n;
-  return (*s == 0) ? NULL : s;
+    char *str = NULL;
+    str = strchr(s, ' ');
+    if(str != NULL) {
+      memcpy(buf, s, str-s);
+      s = str+1;
+    } else {
+      strcpy(buf, s);
+      s = NULL;
+    }
+    return s;
 }
 
 /*
@@ -147,6 +168,10 @@ char *getarg(int i)		/* vector index = 2 */
     /*
      * Your code here. 
      */
+  char **args = *(char**)proc1_stack;
+  //printf("%s\n",*(args+i));
+  //return (char*)(proc1_stack+i);
+  return *(args+i);
 
     return NULL;
 }
@@ -157,46 +182,62 @@ char *getarg(int i)		/* vector index = 2 */
  */
 void q2(void)
 {
-    /* Your code goes here */
-  char buf[128];
+    /* YOUR code goes here */
+  size_t length_of_buf = 128;
+  char *buf = malloc(sizeof(char) * length_of_buf);
+  char *word_buffer = buf;
   void *temp_vector = NULL;
-	char words[10][20];
-	char *line = malloc(20*sizeof(char));
+  char **words = NULL;
+  char *line = malloc(20*sizeof(char));
+  int i;
 
-  //temp_vector = *(vector + 1);
-	*(vector+1) = readline;
-	//temp_vector = readline;
-  temp_vector = *(vector + 2);
-  temp_vector = getarg;
- 
-    while (1) {
+  words = malloc(10 * sizeof(char *));
+  for(i = 0; i < 10; i++) {
+    *(words+i) = malloc(20 * sizeof(char));
+  }
+
+  init_vector(); 
+  while (1) {
 	/* get a line */
 	/* split it into words */
 	/* if zero words, continue */
 	/* if first word is "quit", break */
 	/* make sure 'getarg' can find the remaining words */
 	/* load and run the command */
-      readline(buf, sizeof(buf));
+    word_buffer = buf;
+    readline(buf, length_of_buf);
       //readfile("q1prog", (char*) proc1, 106);
-		int i;
-		for (i = 0; i < 10; i++) {
-			line = strword(buf, words[i], sizeof(words[i]));
-			if (buf == NULL)
-				break;
-		}
-		
-		if (strcmp(words[0], "quit"))
-			break;
-		readfile(words[0], (char*) proc1, 3000);
+    i = 0;
+    while(word_buffer != NULL) {
+      word_buffer = strword(word_buffer, *(words+i++));
+      //buf = strword(buf, (char*)proc1_stack);
+      //*proc1_stack = words+i++);
+    }
+    *(words+i) = 0;
+    *(char**)proc1_stack = words;
+
+    int ab = strcmp(*words, "quit");
+    printf ("%d\n", ab);
+    if (strcmp(*words, "quit") == 0)
+      break;
+    printf("will read file\n");
+    readfile(*words, (char*) proc1, 3000);
+    printf("read file\n");
     //print((char*)proc1);
     int (*a)(void) = NULL;
     a = proc1;
+    printf("calling micro\n");
     a();
-    }
+    printf("control returned\n");
+  }
     /*
      * Note that you should allow the user to load an arbitrary command,
      * and print an error if you can't find and load the command binary.
      */
+  for(i = 0; i < 10; i++) {
+    free(*(words+i));
+  }
+  free(words);
 }
 
 /*
@@ -225,11 +266,13 @@ void q2(void)
 void yield12(void)		/* vector index = 3 */
 {
     /* Your code here */
+	do_switch(proc1_stack, proc2_stack);
 }
 
 void yield21(void)		/* vector index = 4 */
 {
     /* Your code here */
+	do_switch(proc2_stack, proc1_stack);
 }
 
 void uexit(void)		/* vector index = 5 */
@@ -237,10 +280,20 @@ void uexit(void)		/* vector index = 5 */
     /* Your code here */
 }
 
-void q3(void)
+void q3(void) 
 {
     /* Your code here */
     /* load q3prog1 into process 1 and q3prog2 into process 2 */
+	init_vector();
+	readfile("q3prog1", (char*)proc1, 3000);
+	readfile("q3prog2", (char*)proc2, 3000);
+	main_stack = malloc(4096);
+	main_stack = main_stack + 4096;
+	
+	proc1_stack = setup_stack(proc1_stack, proc1);
+	proc2_stack = setup_stack(proc2_stack, proc2);
+
+
 }
 
 
