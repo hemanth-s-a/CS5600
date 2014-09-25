@@ -28,8 +28,9 @@ extern void  *proc1;
 extern void  *proc1_stack;
 extern void  *proc2;
 extern void  *proc2_stack;
-void *main_stack = NULL;
 extern void **vector;
+
+stack_ptr_t main_stack = NULL;
 
 int readfile(char *file, char *buf, int buflen);
 char *strword(char *s, char *buf);
@@ -75,7 +76,7 @@ void print(char *line)
     /*
      * Your code goes here. 
      */
-    printf("%s", line);
+  printf("%s", line);
 }
 
 void q1(void)
@@ -84,12 +85,12 @@ void q1(void)
      * Your code goes here. Initialize the vector table, load the
      * code, and go.
      */
-    readfile("q1prog", (char*) proc1, 106);
-    init_vector();
-    //print((char*)proc1);
-    int (*a)(void) = NULL;
-    a = proc1;
-    a();
+  if (readfile("q1prog", (char*) proc1, 106) != 0)
+    printf("Problem loading program\n");
+  init_vector();
+  int (*a)(void) = NULL;
+  a = proc1;
+  a();
 }
 
 int readfile(char *file, char *buf, int buflen)
@@ -217,18 +218,21 @@ void q2(void)
     *(char**)proc1_stack = words;
 
     int ab = strcmp(*words, "quit");
-    printf ("%d\n", ab);
+    //printf ("%d\n", ab);
     if (strcmp(*words, "quit") == 0)
       break;
-    printf("will read file\n");
-    readfile(*words, (char*) proc1, 3000);
-    printf("read file\n");
+    //printf("will read file\n");
+    if(readfile(*words, (char*) proc1, 3000) == 0) {
+      printf("Command not found\n");
+      continue;
+    }
+    //printf("read file\n");
     //print((char*)proc1);
     int (*a)(void) = NULL;
     a = proc1;
-    printf("calling micro\n");
+    //printf("calling micro\n");
     a();
-    printf("control returned\n");
+    //printf("control returned\n");
   }
     /*
      * Note that you should allow the user to load an arbitrary command,
@@ -266,33 +270,36 @@ void q2(void)
 void yield12(void)		/* vector index = 3 */
 {
     /* Your code here */
-	do_switch(proc1_stack, proc2_stack);
+  //setup_stack();
+  do_switch((stack_ptr_t*)&proc1_stack, proc2_stack);
 }
 
 void yield21(void)		/* vector index = 4 */
 {
     /* Your code here */
-	do_switch(proc2_stack, proc1_stack);
+  do_switch((stack_ptr_t*)&proc2_stack, proc1_stack);
 }
 
 void uexit(void)		/* vector index = 5 */
 {
     /* Your code here */
+  do_switch((stack_ptr_t*)&proc1_stack, main_stack);
 }
 
 void q3(void) 
 {
     /* Your code here */
     /* load q3prog1 into process 1 and q3prog2 into process 2 */
-	init_vector();
-	readfile("q3prog1", (char*)proc1, 3000);
-	readfile("q3prog2", (char*)proc2, 3000);
-	main_stack = malloc(4096);
-	main_stack = main_stack + 4096;
-	
-	proc1_stack = setup_stack(proc1_stack, proc1);
-	proc2_stack = setup_stack(proc2_stack, proc2);
 
+  init_vector();
+  readfile("q3prog1", (char*)proc1, 3000);
+  readfile("q3prog2", (char*)proc2, 3000);
+  main_stack = malloc(sizeof(stack_ptr_t));
+  //main_stack = (void*)(main_stack + 4096 - 4);
+
+  proc1_stack = setup_stack(proc1_stack, proc1);
+  proc2_stack = setup_stack(proc2_stack, proc2);
+  do_switch(&main_stack, proc1_stack);
 
 }
 
